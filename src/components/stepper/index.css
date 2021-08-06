@@ -1,0 +1,10 @@
+.form-buttons{
+    width: 100%;
+    display: block;
+    text-align: right;
+    margin: 0 -10%;
+    margin-bottom: 2%;
+}
+.forms{
+    border: 1px solid lightgrey;
+}

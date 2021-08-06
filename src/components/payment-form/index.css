@@ -1,0 +1,11 @@
+h2{
+    text-align: center;
+    font-weight: 300;
+}
+.payment-form{
+    height: 100%;
+    padding: 0 5%;
+    overflow-y: auto;
+    position: relative;
+    text-align: center;
+}
