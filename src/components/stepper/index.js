@@ -1,4 +1,4 @@
-import React,{useContext} from 'react';
+import React,{useContext,useEffect} from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Stepper from '@material-ui/core/Stepper';
 import Step from '@material-ui/core/Step';
@@ -49,7 +49,12 @@ export default function HorizontalLinearStepper() {
   const classes = useStyles();
   const [activeStep, setActiveStep] = React.useState(0);
   const steps = getSteps();
-  //const rep = useContext(ResponseContext);
+  const rep = useContext(ResponseContext);
+
+  useEffect(() => {
+    if(rep.response?.id)
+        handleNext();
+  },[rep.response?.id]);
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -81,7 +86,7 @@ export default function HorizontalLinearStepper() {
         {activeStep === steps.length ? (
           <div>
             <Typography className={classes.instructions}>
-              All steps completed - you&apos;re finished!
+              Congratulation, You finished all the forms!
             </Typography>
             <Button onClick={handleReset} className={classes.button}>
               Reset
@@ -107,7 +112,7 @@ export default function HorizontalLinearStepper() {
                   className={classes.button}
                   type="submit"
                   form={`${getStepContent(activeStep)}-form`}
-                  onClick={handleNext}
+                  //onClick={handleNext}
                 >
                   {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
                 </Button>

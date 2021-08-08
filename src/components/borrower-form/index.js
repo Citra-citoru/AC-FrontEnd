@@ -1,6 +1,7 @@
 import React, {useState, useRef, useContext } from 'react';
 import axios from 'axios';
 import clsx from 'clsx';
+import Alert from '@material-ui/lab/Alert';
 import { makeStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 import Select from '@material-ui/core/Select';
@@ -8,6 +9,7 @@ import InputLabel from '@material-ui/core/InputLabel';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import FormControl from '@material-ui/core/FormControl';
 import {ResponseContext} from '../../context/response';
+import Collapse from '@material-ui/core/Collapse';
 import { MaritalStatuses, Educations, Industries, Countries, SettlementTypes, ProductTypes} from '../../utilities/data';
 import './index.css';
 
@@ -39,6 +41,8 @@ export default function BorrowerForm(){
     const classes = useStyles();
     const rep = useContext(ResponseContext);
     const borrowerForm = useRef(null);
+    const [activateAlert, setActivateAlert] = useState(false);
+    const [isClose,setIsClose] = useState(false);
     const [values, setValues] = useState({
         gender:'',
         maritalStatusId	:'',
@@ -47,6 +51,8 @@ export default function BorrowerForm(){
         countryId:'',
         settlementTypeId:'',
         productTypeId:'',
+        income:0,
+        borrowerTypeId:"70BBD5E3-EDB7-4C28-A1C4-0F894EEA4467"
     });
     const handleChange = (event) => {
         const name = event.target.name;
@@ -58,44 +64,36 @@ export default function BorrowerForm(){
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        rep.setResponse({});
         const form = borrowerForm.current;
         const payload = {
             "externalBorrowerId": form['externalBorrowerId'].value,
             "name":form['name'].value,
-            "borrowerTypeId": form['borrowerTypeId'].value,
-            "birthDate": form['birthDate'].value,
-            "income":form['income'].value,
-            "gender": form['gender'].value,
-            "maritalStatusId": form['maritalStatusId'].value,
-            "educationTypeId": form['educationTypeId'].value,
-            "industryId": form['industryId'].value,
-            "countryId":form['countryId'].value,
-            "state": form['state'].value,
-            "city": form['city'].value,
-            "numberOfEmployees": form['numberOfEmployees'].value,
-            "settlementTypeId": form['settlementTypeId'].value,
-            "numberOfDependents": form['numberOfDependents'].value,
-            "employerName":form['employerName'].value,
-            "workingStartDate": form['workingStartDate'].value,
-            "workingEndDate": form['workingEndDate'].value,
-            "productTypeId": form['productTypeId'].value,
-            "job": form['job'].value,
+            "borrowerTypeId": form['borrowerTypeId'].value
           };
         //console.log("payload",payload);
         try{
             axios.post(`http://localhost:5000/api/borrowers`, payload)
             .then(result => {
-                console.log(result.data);
                 rep.setResponse(result.data);
-            })
+            }).catch(err=>{
+                console.log(err);
+                setActivateAlert(true);
+            });
         }catch(err){
             console.log(err);
+            setActivateAlert(true);
         };
     };
 
     var today = new Date().toISOString().slice(0, 10);
     return(
         <div className={'borrower-form'}>
+            {activateAlert?
+            <Collapse in={!isClose}>
+                <Alert severity="error" onClose={()=>{setIsClose(true)}}>There is something wrong!</Alert>
+            </Collapse>
+            :''}
             <h2>Borrower</h2>
             <form id={'borrower-form'} ref={borrowerForm} onSubmit={handleSubmit}>
                 <TextField
@@ -115,6 +113,7 @@ export default function BorrowerForm(){
                     required
                     label="Borrower Type Id"
                     id="borrowerTypeId"
+                    defaultValue={values.borrowerTypeId}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
@@ -130,6 +129,7 @@ export default function BorrowerForm(){
                     type="number"
                     label="Income"
                     id="income"
+                    defaultValue={values.income}
                     className={clsx(classes.margin, classes.textField)}
                     InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,

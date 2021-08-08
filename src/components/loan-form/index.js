@@ -1,7 +1,8 @@
-import React, {useState, useRef, useContext } from 'react';
+import React, {useState, useRef, useContext, useEffect } from 'react';
 import axios from 'axios';
 import clsx from 'clsx';
 import { makeStyles } from '@material-ui/core/styles';
+import Alert from '@material-ui/lab/Alert';
 import TextField from '@material-ui/core/TextField';
 import Select from '@material-ui/core/Select';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -13,8 +14,8 @@ import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
 import FormGroup from '@material-ui/core/FormGroup';
 import {ResponseContext} from '../../context/response';
+import Collapse from '@material-ui/core/Collapse';
 import Button from '@material-ui/core/Button';
-import { Products, Currencies, LoanStructureTypes } from '../../utilities/data';
 import './index.css';
 
 const useStyles = makeStyles((theme) => ({
@@ -45,16 +46,38 @@ export default function LoanForm(){
     const classes = useStyles();
     const rep = useContext(ResponseContext);
     const loanForm = useRef(null);
+    const [products, setProducts] = useState([]);
+    const [currencies, setCurrencies]= useState([]);
     const [indexes, setIndexes] = useState([]);
     const [counter, setCounter] = useState(1);
+    const [activateAlert, setActivateAlert] = useState(false);
+    const [isClose,setIsClose] = useState(false);
 
     const [values, setValues] = useState({
         applicationID: rep.response?.id,
-        currencyId:'',
-        loanStructureTypeId:'',
-        productId:''
+        termUnitID: "6575C4FF-32DC-4B62-BB9E-AC2C34DD55D3", 
+        loanStructureTypeId: ' E060ECE8-0446-45F3-B0ED-43A1F597755D',
+        interestRate: 0.2,
+        term: 3,
+        fundId: '77a9139d-caab-43fd-aafb-3effc7652877',
+        totalDisbursementAmount: 300,
+        fundRatio:'0',
+        firstLoan:'0',
+        productId:'462de2eb-0b30-4685-9686-0ac43295f72e',
+        currencyId:''
     });
 
+    useEffect(()=>{
+        axios.get(`http://localhost:5000/api/products`)
+        .then(result => {
+            setProducts(result.data);
+        });
+        axios.get(`http://localhost:5000/api/currencies`)
+        .then(result => {
+            setCurrencies(result.data)
+        });
+    },[values]);
+    
     const handleChange = (event) => {
         const name = event.target.name;
         setValues({
@@ -63,57 +86,55 @@ export default function LoanForm(){
         });
     };
 
+    const payloads = (form) =>{
+        var arr =[];
+        for (var i = 1; i < counter; i++) {
+            var number_=`number${i}`;
+            var date=`date${i}`;
+            var expectedPrincipal=`expectedPrincipal${i}`;
+            var expectedInterest=`expectedInterest${i}`;	
+            var expectedVAT=`expectedVAT${i}`;
+    
+            arr.push({
+                'number':form[`${number_}`].value,
+                'date':new Date(form[`${date}`].value),
+                'expectedPrincipal':form[`${expectedPrincipal}`].value,
+                'expectedInterest':form[`${expectedInterest}`].value,
+                'expectedVAT':form[`${expectedVAT}`].value
+            }
+            )
+        }
+      return {
+        "externalLoanId":form['externalLoanId'].value,
+        "applicationId":form['applicationId'].value,
+        "loanTypeId":"3A0B59D1-864A-43A6-B860-56968EBB13E6",
+        "disbursementDate":form['disbursementDate'].value,
+        "totalDisbursementAmount":form['totalDisbursementAmount'].value,
+        "interestRate":form['interestRate'].value,
+        "term":form['term'].value,
+        "termUnitId":form['termUnitId'].value,
+        "fundId":form['fundId'].value,
+        "currencyId":form['currencyId'].value,
+        "loanStructureTypeId":form['loanStructureTypeId'].value,
+        "paymentSchedule":arr
+    };
+    };
+
     const handleSubmit = async(e) => {
         e.preventDefault();
+        rep.setResponse({});
         const form = loanForm.current;
-        const payload = {
-            "externalLoanId":form['externalLoanId'].value,
-            "applicationId":form['applicationId'].value,
-            "disbursementDate":form['disbursementDate'].value,
-            "totalDisbursementAmount":form['totalDisbursementAmount'].value,
-            "originationFee":form['originationFee'].value,
-            "otherFee":form['otherFee'].value,
-            "rebate":form['rebate'].value,
-            "interestRate":form['interestRate'].value,
-            "term":form['term'].value,
-            "termUnitId":form['termUnitId'].value,
-            "frequencyId":form['frequencyId'].value,
-            "restructuredFromLoanId":form['restructuredFromLoanId'].value,
-            "refinancedFromLoanId":form['refinancedFromLoanId'].value,
-            "refinancedExtraAmount":form['refinancedExtraAmount'].value,
-            "fundId":form['fundId'].value,
-            "facilityId":form['facilityId'].value,
-            "fundedRatio":form['fundedRatio'].value,
-            "isFirstLoan":form['isFirstLoan'].value,
-            "collateralFromDate":form['collateralFromDate'].value,
-            "collateralToDate":form['collateralToDate'].value,
-            "currencyId":form['currencyId'].value,
-            "loanStructureTypeId":form['loanStructureTypeId'].value,
-            "recoveredFrom":form['recoveredFrom'].value,
-            "collateralTypeId":form['collateralTypeId'].value,
-            "collateralValue":form['collateralValue'].value,
-            "collateralAcquisitionDate":form['collateralAcquisitionDate'].value,
-            "collateralAmortizationStartDate":form['collateralAmortizationStartDate'].value,
-            "collateralMarketValue":form['collateralMarketValue'].value,
-            "loanNumber":form['loanNumber'].value,
-            "agentId":form['agentId'].value,
-            "agentName":form['agentName'].value,
-            "agentRevenue":form['agentRevenue'].value,
-            "recoveryRate":form['recoveryRate'].value,
-            "productId":form['productId'].value,
-            "lender":form['lender'].value,
-            "contractNumber":form['contractNumber'].value,
-            "paymentSchedule":form['paymentSchedule'].value
-        };
-
+        const payload = payloads(form);
+        console.log("payload",payload)
         try{
             axios.post(`http://localhost:5000/api/loans`, payload)
             .then(result => {
-                console.log(result.data);
                 rep.setResponse(result.data);
-            })
+            }).catch(err=>{
+                setActivateAlert(true);
+            });
         }catch(err){
-            console.log(err);
+            setActivateAlert(true);
         };
     };
 
@@ -125,57 +146,70 @@ export default function LoanForm(){
     const PaymentSchedule = () =>{
         const paymentScheduleFields = indexes.map(i=>{
             return(
-                <div key={i} className={'payment-schedule'}>
+            <div key={i} className={'payment-schedule'}>
                 <TextField
+                    required
+                    type="number"
                     label={`Number ${i}`}
-                    id={`number ${i}`}
+                    id={`number${i}`}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
+                    required
                     label={`Date ${i}`}
-                    id={`date ${i}`}
+                    id={`date${i}`}
                     type="date"
                     defaultValue={today}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
+                    required
                     label={`Expected Principal ${i}`}
-                    id={`expectedPrincipal ${i}`}
+                    id={`expectedPrincipal${i}`}
                     type="number"
+                    defaultValue={0}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
+                    required
                     label={`Expected Interest ${i}`}
-                    id={`expectedInterest ${i}`}
+                    id={`expectedInterest${i}`}
                     type="number"
+                    defaultValue={0}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                     style={{textAlign:'left'}}
                 />
                 <TextField
+                    required
                     label={`Expected VAT ${i}`}
-                    id={`expectedVAT ${i}`}
+                    id={`expectedVAT${i}`}
                     type="number"
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                     style={{textAlign:'left'}}
                 />
-                </div>
+            </div>
             )
         })
         return(
-            <div>
-            {paymentScheduleFields}
-        </div>
+            <FormGroup row>
+                {paymentScheduleFields}
+            </FormGroup>
         )
     };
 
     var today = new Date().toISOString().slice(0, 10);
     return(
         <div className={'loan-form'}>
+            {activateAlert?
+            <Collapse in={!isClose}>
+                <Alert severity="error" onClose={()=>{setIsClose(true)}}>There is something wrong!</Alert>
+            </Collapse>
+            :''}
             <h2>Loan</h2>
             <form id={'loan-form'} ref={loanForm} onSubmit={handleSubmit}>
                 <TextField
@@ -189,7 +223,7 @@ export default function LoanForm(){
                     required
                     readOnly={true}
                     label="Application ID"
-                    id="applicationID"
+                    id="applicationId"
                     value={values.applicationID}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
@@ -209,22 +243,19 @@ export default function LoanForm(){
                     label="Total Disbursement Amount"
                     id="totalDisbursementAmount"
                     className={clsx(classes.margin, classes.textField)}
+                    defaultValue={values.totalDisbursementAmount}
                     InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
                     }}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Origination Fee"
                     id="originationFee"
                     className={clsx(classes.margin, classes.textField)}
-                    InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
+                    InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Other Fee"
                     id="otherFee"
@@ -234,20 +265,18 @@ export default function LoanForm(){
                     }}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Rebate"
                     id="rebate"
                     className={clsx(classes.margin, classes.textField)}
-                    InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
+                    InputLabelProps={{shrink: true}}
                 />
                 <TextField
                     required
                     type="number"
                     label="Interest Rate"
                     id="interestRate"
+                    defaultValue={values.interestRate}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
@@ -256,6 +285,7 @@ export default function LoanForm(){
                     type="number"
                     label="Term"
                     id="term"
+                    defaultValue={values.term}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
@@ -263,20 +293,17 @@ export default function LoanForm(){
                     required
                     label="Term Unit Id"
                     id="termUnitId"
-                    value={values.applicationID}
+                    defaultValue={values.termUnitID}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Frequency Id"
                     id="frequencyId"
-                    value={values.applicationID}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Restructured From Loan Id"
                     id="restructuredFromLoanId"
                     value={values.applicationID}
@@ -284,7 +311,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Refinanced From Loan Id"
                     id="refinancedFromLoanId"
                     value={values.applicationID}
@@ -292,25 +318,20 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Refinanced Extra Amount"
                     id="refinancedExtraAmount"
                     className={clsx(classes.margin, classes.textField)}
-                    InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
+                    InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Fund Id"
                     id="fundId"
-                    value={values.applicationID}
+                    value={values.fundId}
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Facility Id"
                     id="facilityId"
                     value={values.applicationID}
@@ -319,20 +340,19 @@ export default function LoanForm(){
                 />
                 <FormControl component="fieldset" className={clsx(classes.margin)}>
                     <FormLabel component="legend" className={'radio-label'}><h5>Funded Ratio</h5></FormLabel>
-                    <RadioGroup aria-label="fundedRatio" name="fundedRatio" onChange={handleChange} row={true}>
+                    <RadioGroup aria-label="fundedRatio" name="fundedRatio" value={values.fundRatio} onChange={handleChange} row={true}>
                         <FormControlLabel value="0" control={<Radio color="primary"/>} label="0" labelPlacement="End"/>
                         <FormControlLabel value="1" control={<Radio color="primary"/>} label="1" labelPlacement="end"/>
                     </RadioGroup>
                 </FormControl>
                 <FormControl component="fieldset" className={clsx(classes.margin)}>
                     <FormLabel component="legend" className={'radio-label'}><h5>First Loan</h5></FormLabel>
-                    <RadioGroup aria-label="isFirstLoan" name="isFirstLoan" onChange={handleChange} row={true}>
-                        <FormControlLabel value="1" control={<Radio color="primary"/>} label="yes" labelPlacement="end" />
-                        <FormControlLabel value="0" control={<Radio color="primary"/>} label="no" labelPlacement="end"/>
+                    <RadioGroup aria-label="isFirstLoan" name="isFirstLoan" value={values.firstLoan} onChange={handleChange} row={true}>
+                        <FormControlLabel value="0" control={<Radio color="primary"/>} label="yes" labelPlacement="end" />
+                        <FormControlLabel value="1" control={<Radio color="primary"/>} label="no" labelPlacement="end"/>
                     </RadioGroup>
                 </FormControl>
                 <TextField
-                    required
                     id="collateralFromDate"
                     label="Collateral From Date"
                     type="date"
@@ -341,7 +361,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     id="collateralToDate"
                     label="Collateral To Date"
                     type="date"
@@ -350,7 +369,7 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <FormControl className={clsx(classes.formControl,classes.margin, classes.textField)}>
-                    <InputLabel required htmlFor="currencyId">Currency</InputLabel>
+                    <InputLabel required htmlFor="currencyId" shrink={true}>Currency</InputLabel>
                     <Select
                     native
                     value={values.currencyId}
@@ -360,33 +379,21 @@ export default function LoanForm(){
                         id: 'currencyId',
                     }}
                     >
-                    {Currencies.map((value,index) => {
+                    {currencies.map((value,index) => {
                         return(
-                            <option key={index} value={value.key}>{value.value}</option>
-                        )
-                    })}
-                    </Select>
-                </FormControl>
-                <FormControl className={clsx(classes.formControl,classes.margin, classes.textField)}>
-                    <InputLabel required htmlFor="loanStructureTypeId">Loan Structure Type</InputLabel>
-                    <Select
-                    native
-                    value={values.currencyId}
-                    onChange={handleChange}
-                    inputProps={{
-                        name: 'loanStructureTypeId',
-                        id: 'loanStructureTypeId',
-                    }}
-                    >
-                    {LoanStructureTypes.map((value,index) => {
-                        return(
-                            <option key={index} value={value.key}>{value.value}</option>
+                            <option key={index} value={value.id}>{value.name}</option>
                         )
                     })}
                     </Select>
                 </FormControl>
                 <TextField
-                    required
+                    id="loanStructureTypeId"
+                    label="loanStructureTypeId"
+                    defaultValue={values.loanStructureTypeId}
+                    className={clsx(classes.margin, classes.textField)}
+                    InputLabelProps={{shrink: true}}
+                />
+                <TextField
                     id="recoveredFrom"
                     label="Recovered From"
                     type="date"
@@ -395,14 +402,12 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     label="Collateral Type Id"
                     id="collateralTypeId"
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Collateral Value"
                     id="collateralValue"
@@ -410,7 +415,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     id="collateralAcquisitionDate"
                     label="Collateral Acquisition Date"
                     type="date"
@@ -419,7 +423,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     id="collateralAmortizationStartDate"
                     label="Collateral Amortization Start Date"
                     type="date"
@@ -428,7 +431,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Collateral Market Value"
                     id="collateralMarketValue"
@@ -436,7 +438,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Loan Number"
                     id="loanNumber"
@@ -444,21 +445,18 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     id="agentId"
                     label="agentId"
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     id="agentName"
                     label="Agent Name"
                     className={clsx(classes.margin, classes.textField)}
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Agent Revenue"
                     id="agentRevenue"
@@ -466,7 +464,6 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <TextField
-                    required
                     type="number"
                     label="Recovery Rate"
                     id="recoveryRate"
@@ -474,7 +471,7 @@ export default function LoanForm(){
                     InputLabelProps={{shrink: true}}
                 />
                 <FormControl className={clsx(classes.formControl,classes.margin, classes.textField)}>
-                    <InputLabel required htmlFor="productId">Product</InputLabel>
+                    <InputLabel htmlFor="productId" shrink={true}>Product</InputLabel>
                     <Select
                     native
                     value={values.productId}
@@ -484,9 +481,9 @@ export default function LoanForm(){
                         id: 'productId',
                     }}
                     >
-                    {Products.map((value,index) => {
+                    {products.map((value,index) => {
                         return(
-                            <option key={index} value={value.key}>{value.value}</option>
+                            <option key={index} value={value.id}>{value.name}</option>
                         )
                     })}
                     </Select>
